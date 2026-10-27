@@ -1,0 +1,186 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Escala Medicina • Planejamento</title><style>
+:root{font-family:Inter,system-ui,Arial,sans-serif;color:#26334a;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}header{background:#fff;border-bottom:1px solid #e1e8f0;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}h1{font-size:21px;margin:0}h2{font-size:18px;margin:0 0 15px}h3{font-size:15px;margin:8px 0}small,.muted{color:#718096}.shell{max-width:1450px;margin:auto;padding:20px}nav{display:flex;gap:8px;overflow:auto;margin-bottom:18px}button,select,input{font:inherit}button{border:1px solid #d8e2ef;background:white;color:#294466;border-radius:9px;padding:9px 13px;cursor:pointer}button.primary{background:#2563eb;color:white;border-color:#2563eb}button.active{background:#eaf1ff;border-color:#7da7f7}button.danger{color:#b91c1c}button:disabled{opacity:.5}input,select{border:1px solid #d8e2ef;padding:9px;border-radius:8px;max-width:100%;background:white}label{display:grid;gap:5px;font-size:13px;color:#53647b}.card{background:white;border:1px solid #e2e9f2;border-radius:15px;padding:18px;margin-bottom:15px;box-shadow:0 2px 12px #26334a08}.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:15px}.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}.day{border:1px solid #e2e8f0;border-radius:10px;min-height:115px;padding:8px;cursor:pointer;background:white;font-size:12px;overflow:hidden}.day:hover{border-color:#2563eb}.day.selected{outline:2px solid #2563eb}.day.off{background:#f2f3f7}.day .num{font-weight:750;font-size:14px;margin-bottom:5px}.tag{display:block;border-radius:5px;padding:3px 5px;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rec{background:#e8f2ff;color:#1e4d92}.pos{background:#e9f7ee;color:#24613a}.key{background:#f6edff;color:#6b3c91}.warn{background:#fff1d7;color:#8a5300}.bad{background:#fee7e7;color:#a52727}.good{background:#e7f6ee;color:#17603b}.cols{display:grid;grid-template-columns:1fr 1fr;gap:15px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.pill{display:inline-block;border-radius:20px;padding:5px 10px;background:#edf2fa;font-size:12px}.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin:8px 0}.tablewrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:13px}td,th{padding:9px;border-bottom:1px solid #e9edf3;text-align:left;white-space:nowrap}th{background:#f8faff}td input[type=time]{width:115px}td input[type=text]{width:130px}.metric{font-size:24px;font-weight:750}.legend{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}.hidden{display:none}.scroll{overflow-x:auto}.matrix{min-width:780px} .matrix td,.matrix th{text-align:center;padding:7px 4px}.matrix td:first-child,.matrix th:first-child{text-align:left;position:sticky;left:0;background:white}.box{border-radius:8px;padding:12px;background:#f5f8fc}footer{font-size:12px;color:#718096;padding:15px 0}@media(max-width:850px){.cols,.three{grid-template-columns:1fr}.day{min-height:90px;padding:4px;font-size:10px}.day .num{font-size:12px}.shell{padding:10px}}@media print{nav,.no-print,button{display:none!important}body{background:white}.card{box-shadow:none;break-inside:avoid}.shell{padding:0}.day{min-height:85px}}
+.quick{display:flex;gap:4px;flex-wrap:wrap;min-width:180px}.quick button{font-size:11px;padding:5px 7px;background:#eaf1fc;border:1px solid #cddcf3;border-radius:7px;color:#254a78;cursor:pointer}.quick button:hover{background:#d7e6ff}.tablewrap td{vertical-align:middle}.tablewrap input[type=time]{min-width:104px}button{cursor:pointer}</style></head><body><header><div><h1>✦ Escala Medicina 5x2 • V10</h1><small>Calendário interativo • Rodízio segunda/sábado • CHAVE</small></div><div class="row no-print"><button onclick="exportData()">Exportar backup</button><button onclick="document.getElementById('importFile').click()">Importar backup</button><input id="importFile" type="file" accept="application/json" hidden onchange="importData(event)"><button onclick="window.print()">Imprimir</button></div></header><main class="shell"><nav id="nav"></nav><section id="view"></section><footer>Protótipo local: os dados ficam apenas neste navegador. Sugestões exigem revisão humana; não é sistema de ponto ou validação jurídica. Revise compensações, feriados municipais e convenção coletiva antes de publicar a escala.</footer></main><script>
+const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,'0'),iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,date=s=>new Date(s+'T12:00:00'),add=(s,n)=>{let d=date(s);d.setDate(d.getDate()+n);return iso(d)},fmt=s=>date(s).toLocaleDateString('pt-BR'),day=s=>date(s).getDay(),minutes=t=>{let [h,m]=t.split(':').map(Number);return h*60+m},time=n=>`${pad(Math.floor(n/60))}:${pad(n%60)}`,escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const initial=()=>({month:'2026-11',selected:'2026-11-03',tab:'calendar',employees:[['Keylla','rec'],['Vitória','rec'],['Daniele','rec'],['Ana Paula','pos'],['Amanda','pos'],['Eduarda','pos'],['CHAVE','key'],['Vitória (estágio)','recSupport'],['Bianca','recSupport'],['Mel','posSupport'],['Jadna','bio'],['Jeniffer','bio'],['Beatris','clean'],['Schaiane','clean'],['Ana Caroline','odonto'],['Adriana','odonto'],['Paula','odonto'],['Lara','odontoSupport'],['Maria Clara','call'],['Jessica','call'],['Mariana','call']].map((x,i)=>({id:i+1,name:x[0],sector:x[1],active:true})),vacations:[{id:1,emp:4,start:'2026-12-21',days:15},{id:2,emp:3,start:'2027-01-04',days:30}],holidays:[{date:'2026-11-02',name:'Finados'},{date:'2026-11-15',name:'Proclamação da República'},{date:'2026-11-20',name:'Consciência Negra'},{date:'2026-12-25',name:'Natal'},{date:'2027-01-01',name:'Confraternização Universal'}],overrides:{},keySlots:{},coverAssignments:{},shifts:{},suggestion:null});
+let state;try{state=JSON.parse(localStorage.getItem('escalaV10'))||initial()}catch{state=initial()}const save=()=>localStorage.setItem('escalaV10',JSON.stringify(state));const emp=id=>state.employees.find(e=>e.id==id),vac=(id,d)=>state.vacations.some(v=>v.emp==id&&d>=v.start&&d<add(v.start,v.days)),holiday=d=>state.holidays.find(h=>h.date===d),closed=d=>day(d)===0||!!holiday(d),weekStart=d=>add(d,-((day(d)+6)%7));
+function defaultOff(e,d){
+ const dow=day(d);if(dow===0)return true;
+ if(e.sector.endsWith('Support'))return false;
+ if(['bio','clean','odonto','call'].includes(e.sector)){
+   const team=state.employees.filter(x=>x.active&&x.sector===e.sector).sort((a,b)=>a.id-b.id);
+   const ix=team.findIndex(x=>x.id===e.id);
+   const w=Math.round((date(weekStart(d))-date('2026-11-02'))/604800000);
+   const mon=((w%team.length)+team.length)%team.length;
+   return dow===1?ix===mon:dow===6?ix!==mon:false;
+ }
+ const w=Math.round((date(weekStart(d))-date('2026-11-02'))/604800000);
+ if(e.sector==='key')return dow===((w%2+2)%2===0?1:6);
+ const team=state.employees.filter(x=>x.active&&x.sector===e.sector).sort((a,b)=>a.id-b.id);
+ const ix=team.findIndex(x=>x.id===e.id);if(ix<0)return false;
+ const mondayIndex=((w%team.length)+team.length)%team.length;
+ return dow===1?ix===mondayIndex:dow===6?ix!==mondayIndex:false;
+}
+
+function isOff(e,d){if(closed(d)||vac(e.id,d))return true;let o=state.overrides[d]?.[e.id];return o?.off??defaultOff(e,d)}
+function shift(e,d){
+ let o=state.overrides[d]?.[e.id];if(o?.shift)return o.shift;
+ let custom=state.shifts[e.id];if(custom)return custom;
+ if(e.sector==='recSupport'&&e.name.toLowerCase().includes('vitória')&&day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'12:00'};
+ if(e.sector==='recSupport'&&e.name.toLowerCase().includes('vitória'))return {start:'08:00',l1:'11:30',l2:'12:00',end:'13:00'};
+ if(e.sector.endsWith('Support'))return {start:'12:00',l1:'12:00',l2:'12:00',end:'18:00'};
+ if(e.sector==='odontoSupport')return {start:'12:00',l1:'12:00',l2:'12:00',end:'18:00'};
+ if(e.sector==='odonto'||e.sector==='call'){
+  if(day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'12:00'};
+  return {start:'08:00',l1:'12:00',l2:'13:00',end:'17:00'};
+ }
+ if(e.sector==='bio'){
+  if(day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'12:30'};
+  return {start:'07:30',l1:'11:30',l2:'12:30',end:'17:00'};
+ }
+ if(e.sector==='clean'){
+  const ix=state.employees.filter(x=>x.active&&x.sector==='clean').findIndex(x=>x.id===e.id);
+  if(day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'14:00'};
+  if(day(d)===1&&state.employees.filter(x=>x.active&&x.sector==='clean'&&!isOff(x,d)).length===1)
+    return {start:'09:00',l1:'12:00',l2:'13:00',end:'17:00'};
+  return ix===0?{start:'07:30',l1:'11:30',l2:'12:30',end:'14:00'}:{start:'09:00',l1:'12:00',l2:'13:00',end:'18:00'};
+ }
+ if(day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'12:00'};
+ const mondayOff=defaultOff(e,weekStart(d));
+ if(mondayOff&&day(d)>=2&&day(d)<=5)return e.sector==='pos'?{start:'08:00',l1:'12:00',l2:'13:20',end:'18:20'}:{start:'08:00',l1:'12:00',l2:'13:00',end:'18:00'};
+ const team=state.employees.filter(x=>x.active&&x.sector===e.sector).sort((a,b)=>a.id-b.id);
+ const ix=Math.max(0,team.findIndex(x=>x.id===e.id));const w=Math.round((date(weekStart(d))-date('2026-11-02'))/604800000);
+ const available=team.filter(x=>!isOff(x,d));
+ const eligible=available.filter(x=>!(day(d)>=2&&day(d)<=5&&defaultOff(x,weekStart(d))));
+ const opener=(eligible.length?eligible:available)[0];
+ if(opener&&opener.id===e.id)return {start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
+ const options=[{start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'},{start:'08:00',l1:'12:00',l2:'13:00',end:'17:00'},{start:'08:30',l1:'12:30',l2:'13:30',end:'17:30'}];
+ return options[((ix+w)%3+3)%3];
+}
+
+function works(e,d,t){if(!e.active||isOff(e,d))return false;let s=shift(e,d),m=minutes(t);return m>=minutes(s.start)&&m<minutes(s.end)&&!(m>=minutes(s.l1)&&m<minutes(s.l2))}
+function keyAt(d,t){return state.keySlots[d]?.[t]||'none'}function count(d,t,sector){return state.employees.filter(e=>e.active&&e.sector===sector&&works(e,d,t)).length+(state.employees.some(e=>e.sector==='key'&&works(e,d,t))&&keyAt(d,t)===sector?1:0)}
+const peaks=[['07:30','08:00'],['09:30','10:30'],['13:00','13:30'],['15:00','16:00']];function peak(t){let m=minutes(t);return peaks.some(([a,b])=>m>=minutes(a)&&m<minutes(b))}const slots=()=>[...Array.from({length:21},(_,i)=>time(450+i*30)),'18:00','18:10'];const cl=e=>e.sector==='rec'?'rec':e.sector==='pos'?'pos':'key';const nm=id=>emp(id)?.name||'Ex-funcionária';
+function coverage(d){if(closed(d))return [];return slots().flatMap(t=>['rec','pos'].filter(s=>peak(t)||(s==='pos'&&t>='18:00')).map(s=>({t,s,n:count(d,t,s),required:peak(t)?2:1}))).filter(x=>x.n<x.required)}
+function render(){save();$('#nav').innerHTML=[['calendar','Calendário'],['daily','Horários e cobertura'],['suggest','Gerar escala do dia'],['biomed','Biomédicas'],['cleaning','Limpeza'],['dentistry','Odontologia'],['callcenter','Call Center'],['vac','Férias e feriados'],['team','Funcionárias'],['settings','Turnos padrão']].map(([id,t])=>`<button class="${state.tab===id?'active':''}" onclick="setTab('${id}')">${t}</button>`).join('');$('#view').innerHTML=({calendar:calendar,daily:daily,suggest:suggest,biomed:()=>supportSector('bio'),cleaning:()=>supportSector('clean'),dentistry:()=>supportSector('odonto'),callcenter:()=>supportSector('call'),vac:vacations,team:team,settings:settings})[state.tab]();}
+function setTab(t){state.tab=t;render()}function changeMonth(v){state.month=v;state.selected=v+'-01';render()}function choose(d){state.selected=d;state.tab='daily';render()}
+function calendar(){let [y,m]=state.month.split('-').map(Number),first=new Date(y,m-1,1),length=new Date(y,m,0).getDate(),offset=(first.getDay()+6)%7,html=`<div class="card"><div class="toolbar"><h2 style="margin:0">Calendário de folgas</h2><input type="month" value="${state.month}" onchange="changeMonth(this.value)"><span class="pill">Clique em um dia para editar</span></div><div class="legend"><span class="tag rec">Recepção</span><span class="tag pos">Pós-médico</span><span class="tag key">CHAVE</span><span class="tag warn">Férias / feriado</span></div><div class="grid">${['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(x=>`<b style="text-align:center">${x}</b>`).join('')}`;for(let i=0;i<offset;i++)html+='<div></div>';for(let i=1;i<=length;i++){let d=`${state.month}-${pad(i)}`,h=holiday(d),offs=state.employees.filter(e=>e.active&&!e.sector.endsWith('Support')&&isOff(e,d)&&!vac(e.id,d));let vacationsToday=state.employees.filter(e=>e.active&&vac(e.id,d));html+=`<div class="day ${closed(d)?'off':''} ${d===state.selected?'selected':''}" onclick="choose('${d}')"><div class="num">${i}</div>${h?`<span class="tag warn">${escapeHtml(h.name)}</span>`:day(d)===0?'<span class="tag warn">Domingo • fechado</span>':''}${!closed(d)?offs.map(e=>`<span class="tag ${cl(e)}">Folga: ${escapeHtml(e.name)}</span>`).join(''):''}${vacationsToday.map(e=>`<span class="tag warn">Férias: ${escapeHtml(e.name)}</span>`).join('')}${!closed(d)&&coverage(d).length?`<span class="tag bad">${coverage(d).length} alertas de pico</span>`:''}</div>`}return html+'</div></div><div class="card"><h3>Como ler</h3><p class="muted">O calendário separa folgas, férias e dias fechados. A contagem de cobertura usa os horários efetivos, inclusive almoço e alocação da CHAVE.</p></div>'}
+function daily(){let d=state.selected,closedDay=closed(d),staff=state.employees.filter(e=>e.active),rows=staff.map(e=>{let s=shift(e,d),off=isOff(e,d),status=vac(e.id,d)?'FÉRIAS':closedDay?'FECHADO':off?'FOLGA':'Trabalha';return `<tr><td><b>${escapeHtml(e.name)}</b><br><small>${({rec:'Recepção',pos:'Pós-médico',key:'CHAVE',recSupport:'Apoio recepção',posSupport:'Apoio pós'})[e.sector]}</small></td><td><select onchange="setOff('${d}',${e.id},this.value)"><option value="work" ${!off?'selected':''}>Trabalha</option><option value="off" ${off?'selected':''}>Folga</option></select></td>${['start','l1','l2','end'].map(k=>`<td><input type="time" value="${s[k]}" onchange="setShift('${d}',${e.id},'${k}',this.value)"></td>`).join('')}<td>${!e.sector.endsWith('Support')?`<div class="quick"><button onclick="preset('${d}',${e.id},'abre')">Abre 7h30</button><button onclick="preset('${d}',${e.id},'fecha')">Fecha</button><button onclick="preset('${d}',${e.id},'almoco')">Volta 12h30</button></div>`:''}<span class="tag ${off?'warn':'good'}">${status}</span></td></tr>`}).join('');let alert=coverage(d);let html=`<div class="card"><div class="toolbar"><h2 style="margin:0">Escala diária</h2><input type="date" value="${d}" onchange="state.selected=this.value;render()"><span class="pill">${closedDay?'Clínica fechada':'Recepção 07:30–18:00 • Pós até 18:20'}</span></div>${closedDay?'<p class="tag warn">Dia fechado: não há cobertura programada. As alterações de horários ficam guardadas, mas não contam como trabalho neste dia.</p>':''}<div class="row no-print"><button class="primary" onclick="generateAndApply()">✨ Gerar horários deste dia</button><button onclick="clearDay()">↺ Restaurar horários automáticos deste dia</button></div><p class="muted">Use os botões Abre, Fecha e Volta 12h30 para ajustes rápidos. Os horários continuam editáveis.</p><div class="tablewrap"><table><thead><tr><th>Funcionária</th><th>Situação</th><th>Entrada</th><th>Almoço início</th><th>Almoço fim</th><th>Saída</th><th>Ações / status</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;html+=`<div class="card"><h2>CHAVE • Alocação por meia hora</h2><p class="muted">A CHAVE só conta em um setor por intervalo. Se estiver de folga ou férias, não será contabilizada.</p><div class="row">${slots().map(t=>`<label>${t}<select onchange="setKey('${d}','${t}',this.value)"><option value="none">Sem alocação</option><option value="rec" ${keyAt(d,t)==='rec'?'selected':''}>Recepção</option><option value="pos" ${keyAt(d,t)==='pos'?'selected':''}>Pós-médico</option></select></label>`).join('')}</div></div>`;html+=`<div class="card"><h2>Mapa de cobertura • ${fmt(d)}</h2><p class="muted">Contagem de CLTs e apoios presentes. Nos horários de pico, meta mínima: 2 pessoas por setor. No pós-médico, manter ao menos 1 pessoa até 18h20. Apoios aparecem na contagem operacional, mas não substituem automaticamente uma CLT.</p><div class="scroll"><table class="matrix"><tr><th>Setor</th>${slots().map(t=>`<th>${t}</th>`).join('')}</tr>${['rec','pos'].map(s=>`<tr><th>${s==='rec'?'Recepção':'Pós-médico'}</th>${slots().map(t=>{let n=closedDay?0:count(d,t,s);return `<td class="${closedDay?'':((peak(t)&&n<2)||(s==='pos'&&t>='18:00'&&n<1))?'bad':peak(t)?'good':n===0?'bad':''}">${closedDay?'—':n}</td>`}).join('')}</tr>`).join('')}</table></div><div class="row"><span class="pill">${alert.length} alertas de cobertura</span>${alert.length?'<span class="tag bad">Há períodos abaixo da meta de 2 pessoas</span>':'<span class="tag good">Picos com meta atendida</span>'}</div></div>`;return html}
+function setOff(d,id,v){state.overrides[d]??={};state.overrides[d][id]??={};state.overrides[d][id].off=v==='off';render()}function setShift(d,id,k,v){state.overrides[d]??={};state.overrides[d][id]??={};state.overrides[d][id].shift??={...shift(emp(id),d)};state.overrides[d][id].shift[k]=v;render()}function setKey(d,t,v){state.keySlots[d]??={};state.keySlots[d][t]=v;render()}
+function vacations(){return `<div class="cols"><div class="card"><h2>Programar férias</h2><form onsubmit="addVacation(event)" class="three"><label>Funcionária<select name="emp" required>${state.employees.filter(e=>e.active).map(e=>`<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('')}</select></label><label>Início<input name="start" type="date" required value="2027-03-01"></label><label>Dias corridos<input name="days" type="number" min="1" max="60" value="15" required></label><button class="primary">Cadastrar férias</button></form><h3>Férias programadas</h3><div class="tablewrap"><table><tr><th>Funcionária</th><th>Início</th><th>Último dia</th><th>Retorno previsto</th><th></th></tr>${state.vacations.map(v=>`<tr><td>${escapeHtml(nm(v.emp))}</td><td>${fmt(v.start)}</td><td>${fmt(add(v.start,v.days-1))}</td><td>${fmt(add(v.start,v.days))}</td><td><button class="danger" onclick="removeVacation(${v.id})">Excluir</button></td></tr>`).join('')}</table></div></div><div class="card"><h2>Feriados e fechamentos</h2><p class="muted">Cadastre feriados municipais, estaduais e fechamentos excepcionais. A clínica ficará marcada como fechada.</p><form class="row" onsubmit="addHoliday(event)"><label>Data<input name="date" type="date" required></label><label>Motivo<input name="name" placeholder="Feriado / fechamento" required></label><button class="primary">Adicionar</button></form><div class="tablewrap"><table>${state.holidays.sort((a,b)=>a.date.localeCompare(b.date)).map(h=>`<tr><td>${fmt(h.date)}</td><td>${escapeHtml(h.name)}</td><td><button class="danger" onclick="removeHoliday('${h.date}')">Excluir</button></td></tr>`).join('')}</table></div><p class="tag warn">A lista inicial é parcial. Confira os feriados municipais de Lages e eventuais pontos facultativos antes de usar a escala.</p></div></div>`}
+function addVacation(ev){ev.preventDefault();let f=new FormData(ev.target);state.vacations.push({id:Date.now(),emp:+f.get('emp'),start:f.get('start'),days:+f.get('days')});render()}function removeVacation(id){state.vacations=state.vacations.filter(v=>v.id!==id);render()}function addHoliday(ev){ev.preventDefault();let f=new FormData(ev.target),d=f.get('date');state.holidays=state.holidays.filter(h=>h.date!==d);state.holidays.push({date:d,name:f.get('name')});render()}function removeHoliday(d){state.holidays=state.holidays.filter(h=>h.date!==d);render()}
+function team(){return `<div class="card"><h2>Cadastro da equipe</h2><p class="muted">Editar nomes, setor ou status não apaga as férias e escalas anteriores.</p><div class="tablewrap"><table><tr><th>Nome</th><th>Setor</th><th>Ativa</th></tr>${state.employees.map(e=>`<tr><td><input value="${escapeHtml(e.name)}" onchange="updateEmp(${e.id},'name',this.value)"></td><td><select onchange="updateEmp(${e.id},'sector',this.value)">${[['rec','Recepção'],['pos','Pós-médico'],['key','CHAVE / volante'],['recSupport','Apoio recepção'],['posSupport','Apoio pós'],['bio','Biomédicas'],['clean','Limpeza'],['odonto','Odontologia'],['odontoSupport','Estágio odontologia'],['call','Call Center']].map(([v,n])=>`<option value="${v}" ${e.sector===v?'selected':''}>${n}</option>`).join('')}</select></td><td><input type="checkbox" ${e.active?'checked':''} onchange="updateEmp(${e.id},'active',this.checked)"></td></tr>`).join('')}</table></div><form class="row" onsubmit="addEmp(event)"><label>Nova funcionária<input name="name" required placeholder="Nome"></label><label>Setor<select name="sector"><option value="rec">Recepção</option><option value="pos">Pós-médico</option><option value="key">Volante</option><option value="recSupport">Apoio recepção</option><option value="posSupport">Apoio pós</option></select></label><button class="primary">Adicionar</button></form></div>`}function updateEmp(id,k,v){emp(id)[k]=v;render()}function addEmp(ev){ev.preventDefault();let f=new FormData(ev.target);state.employees.push({id:Math.max(...state.employees.map(e=>e.id))+1,name:f.get('name'),sector:f.get('sector'),active:true});render()}
+function settings(){return `<div class="card"><h2>Turnos padrão por funcionária</h2><p class="muted">Regra automática: quem folga segunda fecha terça a sexta. Recepção: 08h–12h / 13h–18h. Pós: 08h–12h / 13h20–18h20. Sábado: 08h–12h. A CHAVE segue o rodízio e pode ser alocada no pós até 18h20.</p><p class="muted">Esses horários são usados como padrão; você ainda pode editar cada dia individualmente. Não representam validação de 40 horas.</p><div class="tablewrap"><table><tr><th>Funcionária</th><th>Entrada</th><th>Almoço início</th><th>Almoço fim</th><th>Saída</th><th>Horas/dia</th></tr>${state.employees.filter(e=>e.active).map(e=>{let s=shift(e,'2026-11-03'),dur=minutes(s.end)-minutes(s.start)-(minutes(s.l2)-minutes(s.l1));return `<tr><td>${escapeHtml(e.name)}</td>${['start','l1','l2','end'].map(k=>`<td><input type="time" value="${s[k]}" onchange="setDefault(${e.id},'${k}',this.value)"></td>`).join('')}<td>${time(Math.max(0,dur))}</td></tr>`}).join('')}</table></div></div>`}function setDefault(id,k,v){state.shifts[id]??={...shift(emp(id),'2026-11-03')};state.shifts[id][k]=v;render()}
+function hours(e,d){if(isOff(e,d)||!e.active)return 0;let s=shift(e,d);return Math.max(0,minutes(s.end)-minutes(s.start)-Math.max(0,minutes(s.l2)-minutes(s.l1)))}
+function proposeDay(d){
+ const active=state.employees.filter(e=>e.active&&['rec','pos','key'].includes(e.sector)&&!isOff(e,d));
+ const entries=active.map(e=>({id:e.id,shift:{...shift(e,d)}}));
+ // Cada setor precisa de uma abertura às 07h30 e retorno do almoço às 12h30.
+ // Preservar o fechamento obrigatório de quem folga na segunda-feira.
+ if(day(d)>=1&&day(d)<=5){
+   for(const sector of ['rec','pos']){
+     const members=entries.filter(z=>emp(z.id).sector===sector);
+     if(!members.length)continue;
+     const opener=members.find(z=>!defaultOff(emp(z.id),weekStart(d)))||members[0];
+     opener.shift={start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
+     // Quem folgou segunda continua no fechamento quando houver outra pessoa para abrir.
+     for(const z of members){if(z!==opener&&defaultOff(emp(z.id),weekStart(d))&&day(d)>=2){
+       z.shift=sector==='pos'?{start:'08:00',l1:'12:00',l2:'13:20',end:'18:20'}:{start:'08:00',l1:'12:00',l2:'13:00',end:'18:00'};
+     }}
+   }
+ }
+ const proposal={date:d,entries,keySlots:{}};
+ const key=entries.find(z=>emp(z.id).sector==='key');
+ if(key){for(const t of slots()){
+   const counts={rec:0,pos:0};
+   for(const z of entries){const e=emp(z.id);if(!['rec','pos'].includes(e.sector))continue;const s=z.shift,m=minutes(t);
+     if(m>=minutes(s.start)&&m<minutes(s.end)&&!(m>=minutes(s.l1)&&m<minutes(s.l2)))counts[e.sector]++;
+   }
+   for(const e of state.employees){if(e.active&&e.sector.endsWith('Support')&&works(e,d,t))counts[e.sector==='recSupport'?'rec':'pos']++}
+   const s=key.shift,m=minutes(t);
+   if(m>=minutes(s.start)&&m<minutes(s.end)&&!(m>=minutes(s.l1)&&m<minutes(s.l2)))proposal.keySlots[t]=counts.rec<=counts.pos?'rec':'pos';
+ }}return proposal;
+}
+function suggest(){
+ const d=state.selected,w=weekStart(d),dates=Array.from({length:7},(_,i)=>add(w,i));
+ const summary=state.employees.filter(e=>e.active&&['rec','pos','key'].includes(e.sector)).map(e=>({e,mins:dates.reduce((a,x)=>a+hours(e,x),0)}));
+ let html=`<div class="card"><h2>Gerar sugestão da escala do dia</h2><p class="muted">Mantém o calendário interativo da V3. Prioriza abertura às 07h30 e retorno às 12h30 em cada setor. Sugere os horários de todas as funcionárias disponíveis, almoços e a alocação da CHAVE. As folgas seguem apenas segunda ou sábado (domingo é fechado). As alterações só são aplicadas após confirmação.</p><div class="toolbar"><label>Dia<input type="date" value="${d}" onchange="state.selected=this.value;state.suggestion=null;render()"></label><button class="primary" onclick="generateSuggestion()">Gerar sugestão completa do dia</button>${state.suggestion&&state.suggestion.date===d?'<button class="primary" onclick="applySuggestion()">Aplicar esta sugestão</button>':''}</div>`;
+ if(closed(d))html+='<span class="tag warn">Clínica fechada neste dia: não há escala de atendimento.</span>';
+ if(state.suggestion&&state.suggestion.date===d){let x=state.suggestion;html+=`<h3>Prévia • ${fmt(d)}</h3><div class="tablewrap"><table><tr><th>Funcionária</th><th>Setor</th><th>Entrada</th><th>Almoço</th><th>Saída</th></tr>${x.entries.map(z=>{let e=emp(z.id),a=z.shift;return `<tr><td>${escapeHtml(e.name)}</td><td>${e.sector==='rec'?'Recepção':e.sector==='pos'?'Pós':'CHAVE'}</td><td>${a.start}</td><td>${a.l1}–${a.l2}</td><td>${a.end}</td></tr>`}).join('')}</table></div><p class="muted">A CHAVE será alocada automaticamente no setor com menor cobertura a cada 30 minutos. A abertura às 07h30 e retorno às 12h30 são priorizados; confira os fechamentos, as 40 horas e a cobertura após aplicar.</p>`;}
+ html+='</div><div class="card"><h2>Conferência semanal • '+fmt(w)+' a '+fmt(add(w,6))+'</h2><div class="tablewrap"><table><tr><th>Funcionária</th><th>Horas efetivas</th><th>Diferença de 40h</th><th>Situação</th></tr>'+summary.map(({e,mins})=>`<tr><td>${escapeHtml(e.name)}</td><td>${time(mins)}</td><td>${mins===2400?'0h':(mins>2400?'+':'−')+time(Math.abs(mins-2400))}</td><td>${dates.some(x=>vac(e.id,x))?'Férias':dates.some(x=>holiday(x))?'Feriado: verificar jornada de referência':mins===2400?'40h previstas':'Ajustar jornada'}</td></tr>`).join('')+'</table></div><p class="tag warn">O gerador não garante cobertura integral nem conformidade trabalhista. Jornadas de 9h e compensações devem ser validadas; a recepção fecha às 18h, o pós às 18h20 e o sábado pode exigir reforço. Feriados não geram débito automático.</p></div>';
+ return html;
+}
+function generateSuggestion(){state.suggestion=closed(state.selected)?null:proposeDay(state.selected);render()}
+function applySuggestion(){const x=state.suggestion;if(!x)return;state.overrides[x.date]??={};for(const e of x.entries){state.overrides[x.date][e.id]??={};state.overrides[x.date][e.id].shift={...e.shift};}state.keySlots[x.date]={...x.keySlots};state.suggestion=null;state.tab='daily';render()}
+function preset(d,id,kind){
+ const e=emp(id);let s={...shift(e,d)};
+ if(kind==='abre')s={start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
+ if(kind==='fecha')s=e.sector==='pos'?{start:'08:00',l1:'12:00',l2:'13:20',end:'18:20'}:{start:'08:00',l1:'12:00',l2:'13:00',end:'18:00'};
+ if(kind==='almoco'){const duration=minutes(s.l2)-minutes(s.l1);s.l2='12:30';s.l1=time(Math.max(0,minutes('12:30')-duration));}
+ state.overrides[d]??={};state.overrides[d][id]??={};state.overrides[d][id].shift=s;render();
+}
+function clearDay(){if(!confirm('Restaurar os horários automáticos deste dia?'))return;
+ const d=state.selected;if(state.overrides[d]){for(const k of Object.keys(state.overrides[d]))delete state.overrides[d][k].shift;}
+ delete state.keySlots[d];render();
+}
+function generateAndApply(){const d=state.selected;if(closed(d))return alert('Clínica fechada neste dia.');
+ const x=proposeDay(d);state.overrides[d]??={};for(const z of x.entries){state.overrides[d][z.id]??={};state.overrides[d][z.id].shift={...z.shift};}
+ state.keySlots[d]={...x.keySlots};render();
+}
+
+function sectorAvailable(e,d,t){return works(e,d,t)}
+function supportSector(sector){
+ const d=state.selected, people=state.employees.filter(e=>e.active&&e.sector===sector);
+ const monday=day(d)===1,saturday=day(d)===6,disabled=closed(d);
+ const title=({bio:'Biomédicas — coleta e acolhimento',clean:'Limpeza — escala e cobertura',odonto:'Odontologia — equipe e apoio',call:'Call Center — equipe e cobertura'})[sector];
+ const week=weekStart(d), days=Array.from({length:6},(_,i)=>add(week,i));
+ let html=`<div class="card"><h2>${title}</h2><p class="muted">Rodízio apenas segunda e sábado; domingo e feriados fechados. Ajuste os horários abaixo, sem alterar o calendário principal.</p>
+ <div class="toolbar"><label>Dia da escala<input type="date" value="${d}" onchange="state.selected=this.value;render()"></label>
+ <button onclick="state.tab='calendar';render()">Ver calendário geral</button>
+ <button onclick="window.print()">Imprimir setor</button></div>`;
+ if(disabled)html+=`<p class="tag warn">Clínica fechada: ${escapeHtml(holiday(d)?.name||'domingo')}.</p>`;
+ else html+=`<p class="tag ${people.filter(e=>!isOff(e,d)).length?'good':'bad'}">${people.filter(e=>!isOff(e,d)).length} ${({bio:'biomédica(s)',clean:'funcionária(s) da limpeza',odonto:'colaboradora(s) da odontologia',call:'atendente(s) do Call Center'})[sector]} escalada(s) neste dia.</p>`;
+ html+=`<div class="tablewrap"><table><tr><th>Funcionária</th><th>Folga / trabalho</th><th>Entrada</th><th>Almoço início</th><th>Almoço fim</th><th>Saída</th><th>Horas</th><th>Atalhos</th></tr>`;
+ for(const e of people){const off=isOff(e,d),v=shift(e,d),h=hours(e,d);
+ html+=`<tr><td><strong>${escapeHtml(e.name)}</strong>${vac(e.id,d)?'<br><small>FÉRIAS</small>':''}</td>
+ <td>${disabled?'FECHADO':vac(e.id,d)?'FÉRIAS':`<select onchange="setOff('${d}',${e.id},this.value)"><option value="work" ${!off?'selected':''}>Trabalha</option><option value="off" ${off?'selected':''}>Folga</option></select>`}</td>
+ ${['start','l1','l2','end'].map(k=>`<td><input type="time" ${off?'disabled':''} value="${v[k]}" onchange="setShift('${d}',${e.id},'${k}',this.value)"></td>`).join('')}
+ <td>${Math.floor(h/60)}h${pad(h%60)}</td><td><div class="quick"><button ${off?'disabled':''} onclick="sectorPreset('${d}',${e.id},'early')">Abre</button><button ${off?'disabled':''} onclick="sectorPreset('${d}',${e.id},'late')">Fecha</button>${sector==='clean'?`<button ${off?'disabled':''} onclick="sectorPreset('${d}',${e.id},'sat')">Sábado 14h</button>`:''}</div></td></tr>`}
+ html+='</table></div>';
+ if(sector==='odonto'||sector==='call'){
+ const support=sector==='odonto'?state.employees.filter(e=>e.active&&e.sector==='odontoSupport'):[];
+ html+=`<div class="box"><h3>Cobertura do setor</h3><p>${people.filter(e=>!isOff(e,d)).length} funcionária(s) disponíveis. ${sector==='odonto'?'Apoio: '+support.map(e=>escapeHtml(e.name)).join(', '):'Confira a quantidade de atendentes por horário.'}</p><p class="muted">Os horários iniciais são provisórios. Defina as jornadas, os intervalos e a quantidade mínima necessária antes de aprovar a escala.</p></div>`;
+ }else if(sector==='bio'){
+ const b=people.find(e=>!isOff(e,d)),vit=state.employees.find(e=>e.name==='Vitória (estágio)'),bia=state.employees.find(e=>e.name==='Bianca');
+ const covers=[vit,bia].filter(e=>e&&e.active&&!isOff(e,d));
+ const chosen=state.coverAssignments?.[d]||'auto';
+ const pick=chosen==='auto'?(saturday?String(vit?.id||''):String(covers[0]?.id||'')):chosen;
+ const support=state.employees.find(e=>String(e.id)===pick);
+ const viable=support&&(!saturday||support.id===vit?.id)&&works(support,d,saturday?'08:00':'12:00');
+ html+=`<div class="box"><h3>Coleta e acolhimento</h3>
+ <p><strong>Coleta:</strong> ${disabled?'Clínica fechada':b?escapeHtml(b.name):'⚠️ Sem biomédica disponível'}</p>
+ <div class="row"><label>Apoio no acolhimento<select onchange="setCover('${d}',this.value)"><option value="auto" ${chosen==='auto'?'selected':''}>Automático</option>${[vit,bia].filter(Boolean).map(e=>`<option value="${e.id}" ${chosen===String(e.id)?'selected':''}>${escapeHtml(e.name)}</option>`).join('')}</select></label></div>
+ <p><strong>Acolhimento:</strong> ${disabled?'Clínica fechada':support?escapeHtml(support.name):'⚠️ Sem apoio selecionado'}</p>
+ <p class="tag ${disabled?'warn':viable?'good':'bad'}">${disabled?'Não há atendimento.':saturday?'Sábado: Vitória deve estar disponível durante o acolhimento.':'Verifique se o horário de Bianca/Vitória cobre todo o acolhimento necessário.'}</p>
+ <p class="muted">A estagiária não substitui a biomédica na coleta. O apoio no acolhimento depende de supervisão e atribuições permitidas. A Vitória tem horário padrão até 13h nos dias úteis; no sábado, confirme o horário específico.</p></div>`;
+ } else {
+ const available=people.filter(e=>!isOff(e,d));
+ const ends=available.map(e=>minutes(shift(e,d).end));
+ const ok=saturday?ends.some(x=>x>=840):monday?ends.some(x=>x>=1020):ends.some(x=>x>=1080);
+ html+=`<div class="box"><h3>Conferência da limpeza</h3><p class="tag ${disabled?'warn':ok?'good':'bad'}">${disabled?'Clínica fechada':ok?'Saída mínima programada para o dia':'⚠️ Falta cobertura até o horário esperado'}</p>
+ <p class="muted">Sábado: saída até 14h. Segunda: a pessoa presente deve permanecer até pelo menos 17h. Nos outros dias, priorizar uma saída às 14h e outra às 18h. Confira também intervalos e carga semanal.</p></div>`;
+ }
+ html+='</div><div class="card"><h2>Rodízio da semana</h2><div class="tablewrap"><table><tr><th>Funcionária</th>'+days.map(x=>`<th>${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][day(x)]}<br>${fmt(x)}</th>`).join('')+'</tr>'+people.map(e=>`<tr><td>${escapeHtml(e.name)}</td>${days.map(x=>`<td><span class="tag ${vac(e.id,x)?'warn':closed(x)?'warn':isOff(e,x)?'bad':'good'}">${vac(e.id,x)?'Férias':closed(x)?'Fechado':isOff(e,x)?'Folga':shift(e,x).start+'–'+shift(e,x).end}</span></td>`).join('')}</tr>`).join('')+'</table></div><p class="muted">As férias e os feriados têm prioridade. O rodízio não substitui a conferência da jornada semanal.</p></div>';
+ return html;
+}
+function sectorPreset(d,id,kind){
+ const e=emp(id);let v;
+ if(e.sector==='bio'||e.sector==='odonto'||e.sector==='call')v=kind==='early'?{start:'07:30',l1:'11:30',l2:'12:30',end:'17:00'}:{start:'08:30',l1:'12:00',l2:'13:00',end:'18:00'};
+ else if(kind==='sat')v={start:'08:00',l1:'12:00',l2:'12:00',end:'14:00'};
+ else v=kind==='early'?{start:'07:30',l1:'11:30',l2:'12:30',end:'14:00'}:{start:'09:00',l1:'12:00',l2:'13:00',end:day(d)===1?'17:00':'18:00'};
+ state.overrides[d]??={};state.overrides[d][id]??={};state.overrides[d][id].shift=v;render();
+}
+function setCover(d,id){state.coverAssignments??={};state.coverAssignments[d]=id;render()}
+
+function exportData(){let a=document.createElement('a'),blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download='backup-escala-medicina.json';a.click();URL.revokeObjectURL(a.href)}function importData(ev){let f=ev.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=()=>{try{let x=JSON.parse(reader.result);if(!Array.isArray(x.employees)||!Array.isArray(x.vacations)||!Array.isArray(x.holidays))throw Error('Formato inválido');if(confirm('Substituir os dados atuais pelo backup?')){state=x;render()}}catch(e){alert('Não foi possível importar: '+e.message)}};reader.readAsText(f)}render();
+</script></body></html>
