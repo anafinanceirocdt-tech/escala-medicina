@@ -49,6 +49,7 @@ async function loadCloud(){
   if(!useLocal)state=initial();
   cloudLastSnapshot="";
  }
+ applyNovemberReceptionRules();
  cloudLoading=false;cloudReady=true;
  document.getElementById("loginScreen").style.display="none";
  render();cloudStatus(data?"Sincronizado":"Salvando escala inicial...");
@@ -83,6 +84,36 @@ async function logoutCloud(){
 const $=s=>document.querySelector(s),pad=n=>String(n).padStart(2,'0'),iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,date=s=>new Date(s+'T12:00:00'),add=(s,n)=>{let d=date(s);d.setDate(d.getDate()+n);return iso(d)},fmt=s=>date(s).toLocaleDateString('pt-BR'),day=s=>date(s).getDay(),minutes=t=>{let [h,m]=t.split(':').map(Number);return h*60+m},time=n=>`${pad(Math.floor(n/60))}:${pad(n%60)}`,escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const initial=()=>({month:'2026-11',selected:'2026-11-03',tab:'calendar',employees:[['Keylla','rec'],['Vitória','rec'],['Daniele','rec'],['Ana Paula','pos'],['Amanda','pos'],['Eduarda','pos'],['CHAVE','key'],['Vitória (estágio)','recSupport'],['Bianca','recSupport'],['Mel','posSupport'],['Jadna','bio'],['Jeniffer','bio'],['Beatris','clean'],['Schaiane','clean'],['Ana Caroline','odonto'],['Adriana','odonto'],['Paula','odonto'],['Lara','odontoSupport'],['Maria Clara','call'],['Jessica','call'],['Mariana','call']].map((x,i)=>({id:i+1,name:x[0],sector:x[1],active:true})),vacations:[{id:1,emp:4,start:'2026-12-21',days:15},{id:2,emp:3,start:'2027-01-04',days:30}],holidays:[{date:'2026-11-02',name:'Finados'},{date:'2026-11-15',name:'Proclamação da República'},{date:'2026-11-20',name:'Consciência Negra'},{date:'2026-12-25',name:'Natal'},{date:'2027-01-01',name:'Confraternização Universal'}],overrides:{},keySlots:{},coverAssignments:{},shifts:{},suggestion:null});
 let state;try{state=JSON.parse(localStorage.getItem('escalaV10'))||initial()}catch{state=initial()}const save=()=>localStorage.setItem('escalaV10',JSON.stringify(state));const emp=id=>state.employees.find(e=>e.id==id),vac=(id,d)=>state.vacations.some(v=>v.emp==id&&d>=v.start&&d<add(v.start,v.days)),holiday=d=>state.holidays.find(h=>h.date===d),closed=d=>day(d)===0||!!holiday(d),weekStart=d=>add(d,-((day(d)+6)%7));
+
+function applyNovemberReceptionRules(){
+ if(state.rulesNov2026Applied)return;
+ const byName=n=>state.employees.find(e=>e.sector==='rec'&&e.name.toLowerCase()===n.toLowerCase());
+ const roster={
+ '2026-11-03':{Daniele:['07:30','11:30','13:00','17:00'],Keylla:['08:30','13:00','14:30','18:00'],Vitória:['08:00','12:00','13:30','17:30']},
+ '2026-11-04':{Daniele:['07:30','11:30','13:00','17:00'],Keylla:['08:00','12:00','13:30','17:30'],Vitória:['08:00','13:00','14:30','18:00']},
+ '2026-11-05':{Daniele:['07:30','11:30','13:00','17:00'],Keylla:['08:30','13:00','14:30','18:00'],Vitória:['08:00','12:00','13:30','17:30']},
+ '2026-11-06':{Daniele:['07:30','11:30','13:00','17:00'],Keylla:['08:00','12:00','13:30','17:30'],Vitória:['08:30','13:00','14:30','18:00']}
+ };
+ for(const [d,people] of Object.entries(roster)){
+  state.overrides[d]??={};
+  for(const [name,a] of Object.entries(people)){const e=byName(name);if(!e)continue;
+   state.overrides[d][e.id]??={};
+   if(!state.overrides[d][e.id].shift)state.overrides[d][e.id].shift={start:a[0],l1:a[1],l2:a[2],end:a[3]};
+  }
+ }
+ for(const name of ['Daniele','Keylla','Vitória']){
+  const e=byName(name);if(!e)continue;
+  state.overrides['2026-11-07']??={};state.overrides['2026-11-07'][e.id]??={};
+  if(state.overrides['2026-11-07'][e.id].off===undefined)state.overrides['2026-11-07'][e.id].off=name!=='Vitória';
+ }
+ const v=byName('Vitória');
+ if(v){state.overrides['2026-11-07'][v.id].shift??={start:'08:00',l1:'12:00',l2:'12:00',end:'12:00'};}
+ const dan=byName('Daniele');
+ if(dan){state.overrides['2026-11-09']??={};state.overrides['2026-11-09'][dan.id]??={};
+  if(state.overrides['2026-11-09'][dan.id].off===undefined)state.overrides['2026-11-09'][dan.id].off=true;
+ }
+ state.rulesNov2026Applied=true;
+}
 function defaultOff(e,d){
  const dow=day(d);if(dow===0)return true;
  if(e.sector==='pos'&&e.name.trim().toLowerCase()==='ana paula')return dow===6;
@@ -98,7 +129,7 @@ function defaultOff(e,d){
  if(e.sector==='key')return dow===((w%2+2)%2===0?1:6);
  const team=state.employees.filter(x=>x.active&&x.sector===e.sector&&!(e.sector==='pos'&&x.name.trim().toLowerCase()==='ana paula')).sort((a,b)=>a.id-b.id);
  const ix=team.findIndex(x=>x.id===e.id);if(ix<0)return false;
- const mondayIndex=((w%team.length)+team.length)%team.length;
+ const mondayIndex=e.sector==='rec'&&w>=1?((w-1+team.length)%team.length):((w%team.length)+team.length)%team.length;
  return dow===1?ix===mondayIndex:dow===6?ix!==mondayIndex:false;
 }
 
@@ -107,7 +138,12 @@ function isOff(e,d){if(closed(d)||vac(e.id,d))return true;
  let o=state.overrides[d]?.[e.id];return o?.off??defaultOff(e,d)}
 function shift(e,d){
  let o=state.overrides[d]?.[e.id];if(o?.shift)return o.shift;
- let custom=state.shifts[e.id];if(custom)return custom;
+ let custom=state.shifts[e.id];
+ if(e.sector==='rec'&&e.name.toLowerCase()==='daniele'&&d>='2026-11-01'&&d<='2026-11-30'){
+  const base=custom||{start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
+  return {...base,end:minutes(base.end)>minutes('17:00')?'17:00':base.end};
+ }
+ if(custom)return custom;
  if(e.sector==='recSupport'&&e.name.toLowerCase().includes('vitória')&&day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'12:00'};
  if(e.sector==='recSupport'&&e.name.toLowerCase().includes('vitória'))return {start:'08:00',l1:'11:30',l2:'12:00',end:'13:00'};
  if(e.sector.endsWith('Support'))return {start:'12:00',l1:'12:00',l2:'12:00',end:'18:00'};
@@ -192,9 +228,9 @@ function proposeDay(d){
      const members=entries.filter(z=>emp(z.id).sector===sector);
      if(!members.length)continue;
      const opener=members.find(z=>emp(z.id).sector==='pos'&&emp(z.id).name.trim().toLowerCase()==='ana paula')||members.find(z=>!defaultOff(emp(z.id),weekStart(d)))||members[0];
-     opener.shift={start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
+     opener.shift={...shift(emp(opener.id),d)};
      // Quem folgou segunda continua no fechamento quando houver outra pessoa para abrir.
-     for(const z of members){if(z!==opener&&!holiday(weekStart(d))&&defaultOff(emp(z.id),weekStart(d))&&day(d)>=2){
+     for(const z of members){if(z!==opener&&!holiday(weekStart(d))&&defaultOff(emp(z.id),weekStart(d))&&day(d)>=2&&!(emp(z.id).sector==='rec'&&emp(z.id).name.toLowerCase()==='daniele'&&d.startsWith('2026-11'))){
        z.shift=sector==='pos'?{start:'08:00',l1:'12:00',l2:'13:20',end:'18:20'}:{start:'08:00',l1:'12:00',l2:'13:00',end:'18:00'};
      }}
    }
