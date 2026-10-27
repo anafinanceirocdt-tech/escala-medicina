@@ -21,10 +21,16 @@ async function initCloud(){
    const email=document.getElementById("loginEmail").value.trim().toLowerCase();
    const password=document.getElementById("loginPassword").value;
    if(email!==adminEmail){loginMessage("Este e-mail não tem acesso administrativo.");return}
-   const {error}=await cloud.auth.signInWithPassword({email,password});
-   document.getElementById("loginPassword").value="";
-   if(error){loginMessage("Não foi possível entrar: "+error.message);return}
-   await loadCloud();
+   try{
+    const response=await Promise.race([
+      cloud.auth.signInWithPassword({email,password}),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error("Tempo de conexão excedido (20 segundos). Verifique a URL do projeto, a rede e se o Supabase está acessível.")),20000))
+    ]);
+    document.getElementById("loginPassword").value="";
+    if(response.error){loginMessage("Não foi possível entrar: "+response.error.message);return}
+    loginMessage("Login aceito. Carregando a escala...");
+    await Promise.race([loadCloud(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("O carregamento da escala excedeu 20 segundos.")),20000))]);
+   }catch(e){loginMessage("Erro: "+(e?.message||String(e))+". Atualize a página e tente novamente.");}
   });
   if(session?.user?.email?.toLowerCase()===adminEmail)await loadCloud();
   else{if(session)await cloud.auth.signOut();loginMessage("Entre com seu e-mail e senha de administrador.")}
