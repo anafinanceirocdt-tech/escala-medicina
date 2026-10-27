@@ -129,7 +129,7 @@ function shift(e,d){
  }
  if(day(d)===6)return {start:'08:00',l1:'12:00',l2:'12:00',end:'12:00'};
  if(e.sector==='pos'&&e.name.trim().toLowerCase()==='ana paula')return {start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
- const mondayOff=defaultOff(e,weekStart(d));
+ const mondayOff=!holiday(weekStart(d))&&defaultOff(e,weekStart(d));
  if(mondayOff&&day(d)>=2&&day(d)<=5)return e.sector==='pos'?{start:'08:00',l1:'12:00',l2:'13:20',end:'18:20'}:{start:'08:00',l1:'12:00',l2:'13:00',end:'18:00'};
  const team=state.employees.filter(x=>x.active&&x.sector===e.sector).sort((a,b)=>a.id-b.id);
  const ix=Math.max(0,team.findIndex(x=>x.id===e.id));const w=Math.round((date(weekStart(d))-date('2026-11-02'))/604800000);
@@ -144,7 +144,33 @@ function shift(e,d){
 function works(e,d,t){if(!e.active||isOff(e,d))return false;let s=shift(e,d),m=minutes(t);return m>=minutes(s.start)&&m<minutes(s.end)&&!(m>=minutes(s.l1)&&m<minutes(s.l2))}
 function keyAt(d,t){return state.keySlots[d]?.[t]||'none'}function count(d,t,sector){return state.employees.filter(e=>e.active&&e.sector===sector&&works(e,d,t)).length+(state.employees.some(e=>e.sector==='key'&&works(e,d,t))&&keyAt(d,t)===sector?1:0)}
 const peaks=[['07:30','08:00'],['09:30','10:30'],['13:00','13:30'],['15:00','16:00']];function peak(t){let m=minutes(t);return peaks.some(([a,b])=>m>=minutes(a)&&m<minutes(b))}const slots=()=>[...Array.from({length:21},(_,i)=>time(450+i*30)),'18:00','18:10'];const cl=e=>e.sector==='rec'?'rec':e.sector==='pos'?'pos':'key';const nm=id=>emp(id)?.name||'Ex-funcionária';
-function coverage(d){if(closed(d))return [];return slots().flatMap(t=>['rec','pos'].filter(s=>peak(t)||(s==='pos'&&t>='18:00')).map(s=>({t,s,n:count(d,t,s),required:peak(t)?2:1}))).filter(x=>x.n<x.required)}
+function coverageRequired(d,t,s){
+ if(day(d)>=2&&day(d)<=5){
+  if(t==='07:30')return 1;
+  if(t==='08:00')return 2;
+  if(t==='08:30')return 3;
+ }
+ if(day(d)===1){if(t==='07:30')return 1;if(t==='08:00'||t==='08:30')return 2;}
+ if(peak(t))return 2;
+ if(s==='pos'&&t>='18:00')return 1;
+ return 0;
+}
+function coverage(d){if(closed(d))return [];return slots().flatMap(t=>['rec','pos'].map(s=>({t,s,n:count(d,t,s),required:coverageRequired(d,t,s)}))).filter(x=>x.required>0&&x.n<x.required)}
+function weeklyRole(e,d){
+ if(!['rec','pos','key'].includes(e.sector))return '';
+ if(e.sector==='pos'&&e.name.trim().toLowerCase()==='ana paula')return 'Fixa segunda–sexta';
+ if(day(weekStart(d))!==1)return '';
+ const monday=weekStart(d);
+ if(holiday(monday))return 'Semana com feriado: sem compensação';
+ return defaultOff(e,monday)?'FECHAMENTO da semana • trabalha sábado':'ABERTURA / INTERMEDIÁRIO • folga sábado';
+}
+function sectorCoverageMatrix(sector){
+ const d=state.selected;
+ if(!['rec','pos'].includes(sector))return '';
+ const staff=state.employees.filter(e=>e.active&&e.sector===sector);
+ const times=['07:30','08:00','08:30','09:30','10:00','13:00','15:00','17:00',sector==='pos'?'18:10':'17:30'];
+ return `<div class="card"><h3>Cobertura por horário — ${sectorNames[sector]}</h3><p class="muted">Contagem de funcionárias fixas, sem estagiárias e sem CHAVE. Apoios aparecem à parte.</p><div class="tablewrap"><table><tr><th>Horário</th><th>Fixas presentes</th><th>Meta</th><th>Apoios / CHAVE</th><th>Situação</th></tr>${times.map(t=>{const n=staff.filter(e=>works(e,d,t)).length;const req=coverageRequired(d,t,sector);const helpers=state.employees.filter(e=>e.active&&((sector==='rec'&&e.sector==='recSupport')||(sector==='pos'&&e.sector==='posSupport')||(e.sector==='key'&&keyAt(d,t)===sector))&&works(e,d,t)).map(e=>e.name);return `<tr><td>${t}</td><td>${n}</td><td>${req||'—'}</td><td>${escapeHtml(helpers.join(', ')||'—')}</td><td><span class="tag ${!req||n>=req?'good':'bad'}">${!req?'Sem meta':n>=req?'OK':'Faltam '+(req-n)}</span></td></tr>`}).join('')}</table></div></div>`;
+}
 function render(){save();queueCloudSave();$('#nav').innerHTML=[['calendar','Calendário'],['daily','Recepção e pós-médico'],['suggest','Gerar escala do dia'],['biomed','Biomédicas'],['cleaning','Limpeza'],['dentistry','Odontologia'],['callcenter','Call Center'],['vac','Férias e feriados'],['team','Funcionárias'],['settings','Turnos padrão']].map(([id,t])=>`<button class="${state.tab===id?'active':''}" onclick="setTab('${id}')">${t}</button>`).join('');$('#view').innerHTML=({calendar:calendar,daily:daily,suggest:suggest,biomed:()=>sectorPage('bio'),cleaning:()=>sectorPage('clean'),dentistry:()=>sectorPage('odonto'),callcenter:()=>sectorPage('call'),vac:vacations,team:team,settings:settings})[state.tab]();}
 function setTab(t){state.tab=t;if(['biomed','cleaning','dentistry','callcenter'].includes(t))sectorPanel='calendar';render()}function changeMonth(v){state.month=v;state.selected=v+'-01';render()}function choose(d){state.selected=d;state.tab='daily';sectorPanel='hours';render()}
 function calendar(){let [y,m]=state.month.split('-').map(Number),first=new Date(y,m-1,1),length=new Date(y,m,0).getDate(),offset=(first.getDay()+6)%7,html=`<div class="card"><div class="toolbar"><h2 style="margin:0">Calendário de folgas</h2><input type="month" value="${state.month}" onchange="changeMonth(this.value)"><span class="pill">Clique em um dia para editar</span></div><div class="legend"><span class="tag rec">Recepção</span><span class="tag pos">Pós-médico</span><span class="tag key">CHAVE</span><span class="tag warn">Férias / feriado</span></div><div class="grid">${['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(x=>`<b style="text-align:center">${x}</b>`).join('')}`;for(let i=0;i<offset;i++)html+='<div></div>';for(let i=1;i<=length;i++){let d=`${state.month}-${pad(i)}`,h=holiday(d),offs=state.employees.filter(e=>e.active&&!e.sector.endsWith('Support')&&isOff(e,d)&&!vac(e.id,d));let vacationsToday=state.employees.filter(e=>e.active&&vac(e.id,d));html+=`<div class="day ${closed(d)?'off':''} ${d===state.selected?'selected':''}" onclick="choose('${d}')"><div class="num">${i}</div>${h?`<span class="tag warn">${escapeHtml(h.name)}</span>`:day(d)===0?'<span class="tag warn">Domingo • fechado</span>':''}${!closed(d)?offs.map(e=>`<span class="tag ${cl(e)}">Folga: ${escapeHtml(e.name)}</span>`).join(''):''}${vacationsToday.map(e=>`<span class="tag warn">Férias: ${escapeHtml(e.name)}</span>`).join('')}${!closed(d)&&coverage(d).length?`<span class="tag bad">${coverage(d).length} alertas de pico</span>`:''}</div>`}return html+'</div></div><div class="card"><h3>Como ler</h3><p class="muted">O calendário separa folgas, férias e dias fechados. A contagem de cobertura usa os horários efetivos, inclusive almoço e alocação da CHAVE.</p></div>'}
@@ -168,7 +194,7 @@ function proposeDay(d){
      const opener=members.find(z=>emp(z.id).sector==='pos'&&emp(z.id).name.trim().toLowerCase()==='ana paula')||members.find(z=>!defaultOff(emp(z.id),weekStart(d)))||members[0];
      opener.shift={start:'07:30',l1:'11:30',l2:'12:30',end:'16:30'};
      // Quem folgou segunda continua no fechamento quando houver outra pessoa para abrir.
-     for(const z of members){if(z!==opener&&defaultOff(emp(z.id),weekStart(d))&&day(d)>=2){
+     for(const z of members){if(z!==opener&&!holiday(weekStart(d))&&defaultOff(emp(z.id),weekStart(d))&&day(d)>=2){
        z.shift=sector==='pos'?{start:'08:00',l1:'12:00',l2:'13:20',end:'18:20'}:{start:'08:00',l1:'12:00',l2:'13:00',end:'18:00'};
      }}
    }
@@ -234,14 +260,14 @@ function sectorCalendar(sector){
 function sectorHours(sector){
  const d=state.selected,staff=sectorStaff(sector);
  let html=`<div class="card"><div class="toolbar"><h2 style="margin:0">Horários e cobertura — ${sectorNames[sector]}</h2><input type="date" value="${d}" onchange="state.selected=this.value;state.month=this.value.slice(0,7);render()"></div><p class="muted">Escolha os horários e depois clique em Salvar neste dia ou Salvar para todos os dias. O modelo geral vale nos próximos dias, mas ajustes individuais já feitos permanecem.</p><div class="tablewrap"><table><tr><th>Funcionária</th><th>Situação</th><th>Entrada</th><th>Almoço início</th><th>Almoço fim</th><th>Saída</th><th>Ação</th></tr>`;
- for(const e of staff){const v=shift(e,d),off=isOff(e,d);html+=`<tr><td><b>${escapeHtml(e.name)}</b></td><td>${vac(e.id,d)?'Férias':closed(d)?'Fechado':off?'Folga':'Trabalha'}</td>${['start','l1','l2','end'].map(k=>`<td><input type="time" id="sector-${e.id}-${k}" value="${v[k]}" ${off?'disabled':''}></td>`).join('')}<td><div class="quick"><button ${off?'disabled':''} onclick="saveSectorHours(${e.id},'day')">Só este dia</button><button ${off?'disabled':''} onclick="saveSectorHours(${e.id},'all')">Todos os dias</button></div></td></tr>`}
+ for(const e of staff){const v=shift(e,d),off=isOff(e,d);html+=`<tr><td><b>${escapeHtml(e.name)}</b><br><small>${escapeHtml(weeklyRole(e,d))}</small></td><td>${vac(e.id,d)?'Férias':closed(d)?'Fechado':off?'Folga':'Trabalha'}</td>${['start','l1','l2','end'].map(k=>`<td><input type="time" id="sector-${e.id}-${k}" value="${v[k]}" ${off?'disabled':''}></td>`).join('')}<td><div class="quick"><button ${off?'disabled':''} onclick="saveSectorHours(${e.id},'day')">Só este dia</button><button ${off?'disabled':''} onclick="saveSectorHours(${e.id},'all')">Todos os dias</button></div></td></tr>`}
  html+='</table></div>';
  if(sector==='rec'||sector==='pos'){
  const issues=coverage(d).filter(x=>x.s===sector);
  html+=`<h3>Alertas de cobertura</h3><p class="tag ${issues.length?'bad':'good'}">${issues.length?issues.length+' períodos com cobertura abaixo da meta':'Nenhum alerta nos horários monitorados'}</p>`;
  if(issues.length)html+=`<p class="muted">${issues.slice(0,12).map(x=>x.t+' ('+x.n+'/'+x.required+')').join(' · ')}</p>`;
  }else html+='<p class="muted">Confira a cobertura com as funções e a jornada de cada equipe. Os alertas automáticos detalhados de cobertura ainda são específicos da recepção e pós-médico.</p>';
- return html+'</div>';
+ return html+'</div>'+sectorCoverageMatrix(sector);
 }
 function saveSectorHours(id,mode){
  const e=emp(id),d=state.selected;
